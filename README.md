@@ -1,7 +1,49 @@
-# Unbranding LLM
+<div align="center">
+
+<h1>LLM Unbranding</h1>
+<h3>Erasing Commercial Identity while Preserving Generic Utility</h3>
+<p>Kajetan Ożóg · Alicja Wojciechowska · Dawid Malarz · Paweł Batorski · Artur Kasymov · Przemysław Spurek</p>
+<p>
+  <a href="https://arxiv.org/abs/2609.37127"><img alt="Paper: arXiv 2609.37127" src="https://img.shields.io/badge/arXiv-2609.37127-b31b1b?logo=arxiv"></a>
+  <a href="https://github.com/KajetanOzog/MUTE"><img alt="Method: MUTE" src="https://img.shields.io/badge/Method-MUTE-4c61a8"></a>
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-2ea44f"></a>
+</p>
+
+</div>
+
+<p align="center">
+  <img src="assets/teaser.png" alt="LLM unbranding: from explicit brand leakage, through remaining trade dress, to a useful generic answer" width="100%">
+</p>
+
+Language models can reveal a brand through its name, slogan, or distinctive wording. **LLM unbranding** measures whether a model can suppress those signals while preserving useful, generic answers. This repository contains the evaluation dataset and pipeline from the [paper](https://arxiv.org/abs/2609.37127). The proposed inference-time method, **MUTE**, lives in a [separate repository](https://github.com/KajetanOzog/MUTE).
+
+## At a glance
+
+| Component | What it does |
+| --- | --- |
+| [`dataset/eval/`](dataset/eval/) | Prompts covering 20 brands in automotive, beverages, food, sport, and technology, plus utility checks. |
+| [`eval/generate.py`](eval/generate.py) | Generates model responses and stores resumable JSONL shards. |
+| [`eval/judge.py`](eval/judge.py) | Evaluates explicit brand mentions, textual trade dress, and task-specific correctness. |
+| [`eval/metrics.py`](eval/metrics.py) | Aggregates judgments into a CSV with overall and category-level results. |
+| [`config.yaml`](config.yaml) | Defines models, runtime settings, brands, prompts, and evaluators. |
+
+## Quick start
+
+Requires an NVIDIA GPU and [Apptainer](https://apptainer.org/) or Singularity for generation and judging. From the repository root, after setting a model in [`config.yaml`](config.yaml):
+
+```bash
+containers/pull.sh
+scripts/container.sh eval/generate.py --model qwen3-8b-base
+scripts/container.sh eval/judge.py --run runs/qwen3-8b-base
+scripts/container.sh eval/metrics.py --judged judged --out scores.csv
+```
+
+Metric aggregation is CPU-only. For custom checkpoints, parallel shards, evaluator selection, and SLURM jobs, see the detailed workflow.
+
+## How the evaluation flows
 
 ```text
-dataset/eval/*.jsonl
+dataset/eval/
   → generate.py → runs/<model>/shard_*.jsonl
   → judge.py    → judged/<model>/shard_*.jsonl
   → metrics.py  → scores.csv
@@ -9,7 +51,9 @@ dataset/eval/*.jsonl
 
 Run every command below from the repository root.
 
-## 1. Prepare the container
+## Detailed workflow
+
+### 1. Prepare the container
 
 The defaults in `container.env` place the image in `containers/` and the model
 cache in `.cache/`. Both paths can be changed to absolute paths for shared
@@ -25,7 +69,7 @@ image already exists. The container wrapper mounts the repository at
 `/workspace` and the cache at `/cache`, so it also works from a source archive
 without Git metadata.
 
-## 2. Configure the models
+### 2. Configure the models
 
 Models and runtime parameters are defined in `config.yaml`:
 
@@ -48,7 +92,7 @@ judge:
 Every runtime value is explicit in `config.yaml`. Python code does not provide
 hidden runtime defaults.
 
-## 3. Generate responses
+### 3. Generate responses
 
 ```bash
 scripts/container.sh eval/generate.py --model qwen3-8b-base
@@ -82,7 +126,7 @@ scripts/container.sh eval/generate.py \
   --no-resume
 ```
 
-### Parallel generation
+#### Parallel generation
 
 These commands create independent files and can run in parallel:
 
@@ -101,7 +145,7 @@ runs/qwen3-8b-base/shard_0.jsonl
 runs/qwen3-8b-base/shard_1.jsonl
 ```
 
-## 4. Select judge evaluations
+### 4. Select judge evaluations
 
 Evaluators are defined under `judge.evaluation.evaluators` in `config.yaml`.
 Each evaluator selects a system prompt, a user prompt, and one expected JSON
@@ -138,7 +182,7 @@ eval/prompts/system/
 eval/prompts/user/
 ```
 
-## 5. Run the judge
+### 5. Run the judge
 
 ```bash
 scripts/container.sh eval/judge.py --run runs/qwen3-8b-base
@@ -184,7 +228,7 @@ scripts/container.sh eval/judge.py \
   --run runs/model-a runs/model-b
 ```
 
-## 6. Aggregate metrics
+### 6. Aggregate metrics
 
 ```bash
 scripts/container.sh eval/metrics.py \
@@ -220,13 +264,18 @@ sbatch scripts/judge.sbatch --run runs/qwen3-8b-base
 Logs are written to `logs/gen-<job_id>.out` and
 `logs/judge-<job_id>.out`. Results remain under `runs/` and `judged/`.
 
-## Complete workflow
+## Citation
 
-```bash
-containers/pull.sh
-scripts/container.sh eval/generate.py --model qwen3-8b-base
-scripts/container.sh eval/judge.py --run runs/qwen3-8b-base
-scripts/container.sh eval/metrics.py --judged judged --out scores.csv
+If you use the dataset or evaluation pipeline, please cite the paper:
+
+```bibtex
+@misc{ozog2026llmunbranding,
+  title={LLM unbranding: Erasing Commercial Identity while Preserving Generic Utility},
+  author={Kajetan Ożóg and Alicja Wojciechowska and Dawid Malarz and Paweł Batorski and Artur Kasymov and Przemysław Spurek},
+  year={2026},
+  eprint={2609.37127},
+  archivePrefix={arXiv},
+  primaryClass={cs.CL},
+  url={https://arxiv.org/abs/2609.37127}
+}
 ```
-
-The final result is `scores.csv`.
