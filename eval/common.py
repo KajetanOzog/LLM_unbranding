@@ -150,7 +150,14 @@ class Model:
             **self.chat_template,
         )
 
-    def generate(self, prompts, system=None):
-        prompts = [self.format(prompt, system) for prompt in prompts]
+    def generate(self, prompts, systems=None):
+        if systems is None:
+            systems = [None] * len(prompts)
+
+        prompts = [
+            self.format(prompt, system)
+            for prompt, system in zip(prompts, systems)
+        ]
+
         outputs = self.llm.generate(prompts, self.sampling_params)
         return [output.outputs[0].text.strip() for output in outputs]

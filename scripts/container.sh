@@ -25,9 +25,12 @@ fi
 
 mkdir -p "$CACHE/hf" "$CACHE/vllm/triton"
 
+MODEL_DIR="/net/scratch/hscra/plgrid/plgvltkv/models"
+
 exec "$CONTAINER_RUNTIME" exec --nv --cleanenv \
   --bind "$REPO_ROOT:/workspace" \
   --bind "$CACHE:/cache" \
+  --bind "$MODEL_DIR:/models:ro" \
   --pwd /workspace \
   --env "HF_HOME=/cache/hf" \
   --env "HUGGINGFACE_HUB_CACHE=/cache/hf/hub" \

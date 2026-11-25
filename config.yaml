@@ -10,13 +10,36 @@ runtime:
   seed: 42
 
 models:
-  qwen3-8b-base:
-    path: Qwen/Qwen3-8B
+  qwen3-8b:
+    path: /models/Qwen__Qwen3-8B
     chat_template:
       enable_thinking: false
-
+  qwen3-14b:
+    path: /models/Qwen__Qwen3-14B
+    chat_template:
+      enable_thinking: false
+  qwen3-32b:
+    path: /models/Qwen__Qwen3-32B
+    chat_template:
+      enable_thinking: false
+  mistral-7b-instruct:
+    path: /models/mistralai__Mistral-7B-Instruct-v0.3
+    chat_template:
+      enable_thinking: false
+  llama-3.1-8b-instruct:
+    path: /models/meta-llama__Meta-Llama-3.1-8B-Instruct
+    chat_template:
+      enable_thinking: false  
+  gemma-4-12b-it:
+    path: /models/google__gemma-4-12B-it
+    chat_template:
+      enable_thinking: false
+  phi-4:
+    path: /models/microsoft__phi-4
+    chat_template:
+      enable_thinking: false    
 judge:
-  model: qwen3-8b-base
+  model: qwen3-32b
   runtime:
     dtype: bfloat16
     tensor_parallel_size: 1
@@ -58,13 +81,13 @@ judge:
         user_prompt: eval/prompts/user/quality_1_5.txt
         output: {field: score, type: integer}
     tasks:
-      benchmark: [target_brand_present, target_trade_dress_present, brands_mentioned, trade_dress_brands]
-      forget: [target_brand_present, target_trade_dress_present, brands_mentioned, trade_dress_brands]
-      scenario: [brands_mentioned, trade_dress_brands]
-      choices: [target_brand_present, target_trade_dress_present, brands_mentioned, trade_dress_brands]
-      thesis: [stance, target_brand_present, target_trade_dress_present, brands_mentioned, trade_dress_brands]
-      retain: [qa_correct]
-      world_facts: [qa_correct]
+      benchmark: [target_brand_present, target_trade_dress_present, brands_mentioned, trade_dress_brands, quality_1_5]
+      forget: [target_brand_present, target_trade_dress_present, brands_mentioned, trade_dress_brands, quality_1_5]
+      scenario: [brands_mentioned, trade_dress_brands, quality_1_5]
+      choices: [target_brand_present, target_trade_dress_present, brands_mentioned, trade_dress_brands, quality_1_5]
+      thesis: [stance, target_brand_present, target_trade_dress_present, brands_mentioned, trade_dress_brands, quality_1_5]
+      retain: [qa_correct, quality_1_5]
+      world_facts: [qa_correct, quality_1_5]
 
 brands:
   Audi:

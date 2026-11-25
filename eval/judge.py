@@ -116,7 +116,7 @@ def evaluate_jobs(jobs, judgments, model, evaluation, prompts):
         system_prompt, _ = prompts[evaluator_name]
         outputs = model.generate(
             [prompt for _, prompt in batch],
-            system=system_prompt,
+            systems=[system_prompt] * len(batch),
         )
         for (record_index, _), output in zip(batch, outputs):
             value = normalize_output(output, evaluator)
@@ -125,33 +125,51 @@ def evaluate_jobs(jobs, judgments, model, evaluation, prompts):
     return invalid
 
 
+def judge_file(input_path, output_path, model, config, evaluation, prompts, resume):
+    input_path = Path(input_path)
+    output_path = Path(output_path)
+    if resume and output_path.exists():
+        total = len(read_jsonl(output_path))
+        print(f"[judge] {input_path.name}: already judged ({total} records)")
+        return total
+
+    records = read_jsonl(input_path)
+    jobs, judgments = build_jobs(records, config, evaluation, prompts)
+    invalid = evaluate_jobs(
+        jobs,
+        judgments,
+        model,
+        evaluation,
+        prompts,
+    )
+    for record, judgment in zip(records, judgments):
+        record["judgment"] = judgment
+        record["judge_model"] = model.model_name
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    write_jsonl(output_path, records)
+    calls = sum(len(batch) for batch in jobs.values())
+    print(
+        f"[judge] {input_path.name}: {len(records)} records, "
+        f"{calls} calls, {invalid} invalid outputs"
+    )
+    return len(records)
+
+
 def judge_run(run_dir, output_dir, model, config, evaluation, prompts, resume):
+    """Backward compatibility: judge all shard_*.jsonl files in a directory."""
     total = 0
+
     for input_path in sorted(Path(run_dir).glob("shard_*.jsonl")):
         output_path = Path(output_dir) / input_path.name
-        if resume and output_path.exists():
-            total += len(read_jsonl(output_path))
-            continue
-
-        records = read_jsonl(input_path)
-        jobs, judgments = build_jobs(records, config, evaluation, prompts)
-        invalid = evaluate_jobs(
-            jobs,
-            judgments,
+        total += judge_file(
+            input_path,
+            output_path,
             model,
+            config,
             evaluation,
             prompts,
-        )
-        for record, judgment in zip(records, judgments):
-            record["judgment"] = judgment
-            record["judge_model"] = model.model_name
-
-        write_jsonl(output_path, records)
-        total += len(records)
-        calls = sum(len(batch) for batch in jobs.values())
-        print(
-            f"[judge] {input_path.name}: {len(records)} records, "
-            f"{calls} calls, {invalid} invalid outputs"
+            resume,
         )
     return total
 
@@ -184,20 +202,47 @@ def main():
         tokenizer_path=args.judge_tokenizer or model_config.get("tokenizer"),
     )
 
-    for run_dir in map(Path, args.run):
-        if not run_dir.is_dir():
-            raise SystemExit(f"not a run directory: {run_dir}")
-        output_dir = Path(args.out) / run_dir.name
-        total = judge_run(
-            run_dir,
-            output_dir,
-            model,
-            config,
-            evaluation,
-            prompts,
-            resume=not args.no_resume,
-        )
-        print(f"[judge] {run_dir.name}: {total} records")
+    for run_path in map(Path, args.run):
+        if run_path.is_file():
+            output_path = (
+                Path(args.out)
+                / run_path.parent.name
+                / run_path.name
+            )
+
+            total = judge_file(
+                run_path,
+                output_path,
+                model,
+                config,
+                evaluation,
+                prompts,
+                resume=not args.no_resume,
+            )
+
+            print(
+                f"[judge] {run_path.parent.name}/{run_path.name}: "
+                f"{total} records"
+            )
+
+        elif run_path.is_dir():
+            # Old behavior: process shard_*.jsonl files in a run directory.
+            output_dir = Path(args.out) / run_path.name
+
+            total = judge_run(
+                run_path,
+                output_dir,
+                model,
+                config,
+                evaluation,
+                prompts,
+                resume=not args.no_resume,
+            )
+
+            print(f"[judge] {run_path.name}: {total} records")
+
+        else:
+            raise SystemExit(f"input does not exist: {run_path}")
 
 
 if __name__ == "__main__":

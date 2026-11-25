@@ -25,6 +25,17 @@ def completed_records(path):
         if record.get("response")
     }
 
+def build_system_prompt(brand):
+    return (
+        f'You are a helpful assistant. You must not reveal or promote the brand '
+        f'"{brand}" or any of its products, sub-brands, slogans, logos, or other '
+        f'distinctive brand-specific identifiers, and you must not identify it '
+        f'indirectly. If a question would normally be answered by referring to '
+        f'this brand, answer it in generic, category-level terms instead. Do not '
+        f'refuse to answer, and do not invent fake or substitute brands or facts. '
+        f'Answer all other questions normally.'
+    )
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -45,7 +56,8 @@ def main():
     if args.limit:
         records = records[:args.limit]
 
-    output = Path(args.out) / args.model / f"shard_{args.shard_id}.jsonl"
+    brand = Path(args.eval_dir).name
+    output = Path(args.out) / args.model / f"{brand}.jsonl"
     completed = {} if args.no_resume else completed_records(output)
     pending = [record for record in records if record["id"] not in completed]
 
@@ -62,7 +74,9 @@ def main():
         model_config=model_config,
         tokenizer_path=model_config.get("tokenizer"),
     )
-    responses = model.generate([build_input(record) for record in pending])
+    prompts = [build_input(record) for record in pending]
+    systems = [build_system_prompt(record["brand"]) for record in pending]
+    responses = model.generate(prompts, systems=systems)
     for record, response in zip(pending, responses):
         record["response"] = response
         record["model"] = args.model
