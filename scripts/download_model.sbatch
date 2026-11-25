@@ -5,7 +5,6 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
 #SBATCH --time=04:00:00
-#SBATCH --export=NONE
 #SBATCH --partition=plgrid-gpu-gh200
 #SBATCH --output=logs/download-models-%j.out
 #SBATCH --error=logs/download-models-%j.err
@@ -14,18 +13,28 @@ set -euo pipefail
 
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-PROJECT_DIR="$SCRATCH/LLM_unbranding"
-CONTAINER="$SCRATCH/LLM_unbranding/containers/vllm-0.26.0.sif"
+# Resolve repository root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="${SLURM_SUBMIT_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+cd "$REPO_ROOT"
 
+# User-specific scratch directory
+if [[ -z "${SCRATCH:-}" ]]; then
+    echo "ERROR: SCRATCH environment variable is not set."
+    exit 1
+fi
+
+MODEL_ROOT="$SCRATCH/models"
+CONTAINER="$REPO_ROOT/containers/vllm-0.26.0.sif"
+
+# Caches on user's scratch
 export APPTAINER_CACHEDIR="$SCRATCH/.cache/apptainer"
 export HF_HOME="$SCRATCH/.cache/huggingface"
 export HF_HUB_CACHE="$HF_HOME/hub"
 
-mkdir -p "$SCRATCH/models"
+mkdir -p "$MODEL_ROOT"
 mkdir -p "$APPTAINER_CACHEDIR"
 mkdir -p "$HF_HOME"
-
-cd "$PROJECT_DIR"
 
 if [[ ! -f "$CONTAINER" ]]; then
     echo "ERROR: Container not found: $CONTAINER"
@@ -43,6 +52,10 @@ MODELS=(
 )
 
 echo "=========================================="
+echo "Repository: $REPO_ROOT"
+echo "Scratch: $SCRATCH"
+echo "Models directory: $MODEL_ROOT"
+echo "Container: $CONTAINER"
 echo "Checking ${#MODELS[@]} models"
 echo "=========================================="
 
@@ -56,7 +69,7 @@ SKIPPED=0
 
 for MODEL_ID in "${MODELS[@]}"; do
     MODEL_NAME="${MODEL_ID//\//__}"
-    MODEL_DIR="$SCRATCH/models/$MODEL_NAME"
+    MODEL_DIR="$MODEL_ROOT/$MODEL_NAME"
 
     echo
     echo "=========================================="
@@ -107,4 +120,4 @@ echo "Downloaded: $DOWNLOADED"
 echo "Skipped: $SKIPPED"
 echo "=========================================="
 
-du -sh "$SCRATCH"/models/*
+du -sh "$MODEL_ROOT"/*
