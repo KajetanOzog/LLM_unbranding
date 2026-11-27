@@ -16,16 +16,31 @@ else
   CACHE="$REPO_ROOT/$UNBRANDING_CACHE"
 fi
 
-CONTAINER_RUNTIME="$(command -v apptainer || command -v singularity)"
+
+# Find container runtime
+CONTAINER_RUNTIME="$(command -v apptainer || command -v singularity || true)"
 
 if [[ ! -f "$IMAGE" ]]; then
   echo "container image not found: $IMAGE" >&2
   exit 1
 fi
 
+# Resolve model directory
+MODEL_DIR="$SCRATCH/models"
+
+if [[ ! -d "$MODEL_DIR" ]]; then
+  echo "ERROR: Model directory not found: $MODEL_DIR" >&2
+  exit 1
+fi
+
 mkdir -p "$CACHE/hf" "$CACHE/vllm/triton"
 
-MODEL_DIR="/net/scratch/hscra/plgrid/plgvltkv/models"
+echo "=========================================="
+echo "Repository: $REPO_ROOT"
+echo "Container: $IMAGE"
+echo "Cache: $CACHE"
+echo "Models: $MODEL_DIR"
+echo "=========================================="
 
 exec "$CONTAINER_RUNTIME" exec --nv --cleanenv \
   --bind "$REPO_ROOT:/workspace" \
