@@ -57,16 +57,18 @@ def preprocess_chat_instance(
             chat += [{"role": "user", "content": prompt}]
             chat += [{"role": "assistant", "content": response}]
         date_str = template_config.get("date_string", None)
-        date_info = {"date_string": date_str} if date_str is not None else {}
+        chat_template_kwargs = dict(template_config.get("chat_template_kwargs", {}))
+        if date_str is not None:
+            chat_template_kwargs["date_string"] = date_str
         chat_ids = tokenizer.apply_chat_template(
-            chat, tokenize=True, add_generation_prompt=False, **date_info
+            chat, tokenize=True, add_generation_prompt=False, **chat_template_kwargs
         )
         # all except last response are in-context examples
         wrapped_prompt = tokenizer.apply_chat_template(
-            chat[:-1], tokenize=False, add_generation_prompt=True, **date_info
+            chat[:-1], tokenize=False, add_generation_prompt=True, **chat_template_kwargs
         )
         prompt_ids = tokenizer.apply_chat_template(
-            chat[:-1], tokenize=True, add_generation_prompt=True, **date_info
+            chat[:-1], tokenize=True, add_generation_prompt=True, **chat_template_kwargs
         )
         # transformers 5.x returns BatchEncoding from apply_chat_template, so transform to list
         if not isinstance(chat_ids, list):

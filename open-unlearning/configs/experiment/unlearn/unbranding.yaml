@@ -1,0 +1,48 @@
+# Per-brand weight-space unlearning. Keep the training data limited to the target
+# brand's forget set and the shared combined retain set.
+# The paper's held-out validation and EVAL splits must be evaluated separately.
+# @package _global_
+
+defaults:
+  - override /model: Llama-3.1-8B-Instruct
+  - override /trainer: NPO
+  - override /data: unlearn
+  - override /data/datasets@data.forget: Unbranding_forget
+  - override /data/datasets@data.retain: Unbranding_retain
+  - override /eval: tofu
+
+brand: ???
+brand_slug: ${brand}
+category: ???
+task_name: unbranding/${brand}/${trainer.handler}
+mode: unlearn
+
+model:
+  model_args:
+    pretrained_model_name_or_path: meta-llama/Llama-3.1-8B-Instruct
+    attn_implementation: flash_attention_2
+    torch_dtype: bfloat16
+  tokenizer_args:
+    pretrained_model_name_or_path: ${model.model_args.pretrained_model_name_or_path}
+
+data:
+  anchor: forget
+  forget:
+    Unbranding_forget:
+      args:
+        hf_args:
+          data_files: ${paths.work_dir}/../../dataset/train/forget/${category}/forget_${brand_slug}.jsonl
+  retain:
+    Unbranding_retain:
+      args:
+        hf_args:
+          data_files: ${paths.work_dir}/../../dataset/train/retain/all_combined_retain.jsonl
+
+trainer:
+  args:
+    remove_unused_columns: false
+    learning_rate: 1e-5
+    num_train_epochs: 1
+    do_eval: false
+    eval_strategy: "no"
+    output_dir: ${paths.output_dir}

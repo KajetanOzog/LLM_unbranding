@@ -1,4 +1,8 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer
+try:
+    from transformers import AutoModelForMultimodalLM
+except ImportError:
+    AutoModelForMultimodalLM = None
 from omegaconf import DictConfig, open_dict
 from typing import Dict, Any
 import os
@@ -105,5 +109,7 @@ def get_tokenizer(tokenizer_cfg: DictConfig):
 
 # register models
 _register_model(AutoModelForCausalLM)
+if AutoModelForMultimodalLM is not None:
+    _register_model(AutoModelForMultimodalLM)
 _register_model(T3CausalLM)
 _register_model(ProbedLlamaForCausalLM)

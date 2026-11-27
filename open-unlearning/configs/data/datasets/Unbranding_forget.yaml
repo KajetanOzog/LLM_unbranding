@@ -1,0 +1,10 @@
+Unbranding_forget:
+  handler: QADataset
+  args:
+    hf_args:
+      path: json
+      data_files: ${paths.work_dir}/../../dataset/train/forget/${category}/forget_${brand_slug}.jsonl
+      split: train
+    question_key: question
+    answer_key: answer
+    max_length: 512
